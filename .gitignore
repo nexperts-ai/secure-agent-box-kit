@@ -1,0 +1,6 @@
+# Niemals Geheimnisse oder lokale Setup-Dateien committen
+box-secrets.env
+*.env
+box-vocab.txt
+secrets.enc
+.DS_Store

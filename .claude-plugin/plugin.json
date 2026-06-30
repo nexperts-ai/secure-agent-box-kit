@@ -1,0 +1,6 @@
+{
+  "name": "secure-agent-box-kit",
+  "version": "0.1.0",
+  "description": "Bring a local Claude Code setup onto a NEXperts Secure Agent Box: a skill that structures the password-upload and vocabulary files, plus a migration guide for local-parity.",
+  "author": "NEXperts"
+}
