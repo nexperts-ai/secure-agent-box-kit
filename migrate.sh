@@ -92,6 +92,42 @@ if [ -n "$MEMSRC" ]; then
   fi
 else add memory SKIP "kein lokaler memory/MEMORY.md gefunden"; fi
 
+# ---- 3b) Box-Kontext-Memory (fuer den Box-Claude; Home-Slug-gemappt) ------
+# migrate.sh kopiert den Graph 1:1. Der Box-Claude muss aber WISSEN, dass er jetzt auf einer
+# Secure Agent Box laeuft und Secrets ueber orb-keystore (nicht p2ai/Touch-ID) kommen. Wir legen
+# dafuer EINE Kontext-Notiz an und haengen (idempotent) einen Pointer in die Box-MEMORY.md.
+step "3b) Box-Kontext-Memory (fuer den Box-Claude)"
+if [ -n "$MEMSRC" ]; then
+  MEMDST=".claude/projects/$BOX_SLUG/memory"
+  CTX_MD="---
+name: secure-agent-box-context
+description: \"Diese Claude-Instanz laeuft auf einer NEXperts Secure Agent Box. Secrets approval-gated ueber orb-keystore statt p2ai/Touch-ID.\"
+metadata:
+  type: reference
+---
+
+Migriert vom lokalen Mac-Setup auf eine NEXperts Secure Agent Box.
+- Host: Box-User $BOX_USER, Home $BOX_HOME.
+- Secrets: NICHT p2ai/Touch-ID. Ein Secret holen mit  orb-secret <KEY> <grund>  -> Operator gibt in der Agent-Orbit-Bubble frei. KeePass wurde ueber die Dashboard-Passwoerter-Seite (leaked per HIBP gefiltert) in orb-keystore geladen.
+- Skills/Agents/Memory: vom Mac uebernommen (Home-Slug $LOCAL_SLUG -> $BOX_SLUG gemappt).
+- Plugin: secure-agent-box-kit als Claude-Plugin (marketplace add + install)."
+  if [ "$DRY" = 1 ]; then info "[dry-run] Box-Kontext-Notiz + MEMORY.md-Pointer"; add memctx DRY "reference_secure_agent_box_context.md"; else
+    CTX_B64=$(printf '%s' "$CTX_MD" | base64 | tr -d '\n')
+    OUT=$(SSHB "CTX_B64='$CTX_B64' MEMDST='$MEMDST' python3 - <<'PY'
+import os,base64
+d=os.path.expanduser('~/'+os.environ['MEMDST']); os.makedirs(d,exist_ok=True)
+open(os.path.join(d,'reference_secure_agent_box_context.md'),'w').write(base64.b64decode(os.environ['CTX_B64']).decode())
+mp=os.path.join(d,'MEMORY.md'); cur=open(mp).read() if os.path.exists(mp) else ''
+if 'reference_secure_agent_box_context.md' not in cur:
+    sep='' if (not cur or cur.endswith(chr(10))) else chr(10)
+    open(mp,'a').write(sep+'- [Secure Agent Box](reference_secure_agent_box_context.md): laeuft auf NEXperts Box; Secrets via orb-keystore (orb-secret <KEY> <grund>), nicht p2ai'+chr(10))
+    print('OK pointer-added')
+else: print('OK pointer-exists')
+PY" 2>&1)
+    info "$OUT"; case "$OUT" in OK*) add memctx OK "${OUT#OK }";; *) add memctx PARTIAL "$OUT";; esac
+  fi
+else add memctx SKIP "kein Memory migriert"; fi
+
 # ---- 4) Settings (MERGE, ueberschreibt NICHT die Box-Hooks/Bypass) --------
 step "4) Settings (merge, Box-Hooks bleiben)"
 if [ -f "$LC/settings.json" ]; then
@@ -161,8 +197,11 @@ printf 'PIECE\tSTATUS\tDETAIL\n'
 FAIL=0
 for r in "${REPORT[@]}"; do
   printf '%s\n' "$r"
-  st=$(printf '%s' "$r" | cut -f2)
-  case "$st" in PARTIAL|MISSING) FAIL=1;; esac
+  pc=$(printf '%s' "$r" | cut -f1); st=$(printf '%s' "$r" | cut -f2)
+  # Nur die PFLICHT-Teile gaten den Exit (siehe Header). memctx/sessions/login/secrets/vocab
+  # sind best-effort/Handoff und duerfen den Lauf NICHT auf UNVOLLSTAENDIG kippen.
+  case "$pc" in claude|skills|agents|memory|settings|mcp)
+    case "$st" in PARTIAL|MISSING) FAIL=1;; esac;; esac
 done
 echo
 if [ "$DRY" = 1 ]; then echo "DRY-RUN fertig (nichts geschrieben)."; exit 0; fi

@@ -23,10 +23,17 @@ Vorgehen:
 2. Schreibe `box-vocab.txt`, ein Begriff pro Zeile.
 
 ## 3. Migration lokal -> Box (Claude-Parität)
-Siehe `migrate.sh`. Ziel: reibungsloser Folgebetrieb auf der Box. Native Claude-Mechanik soweit möglich:
-- **Skills**: nativ via Plugin -> auf der Box `claude plugin install https://github.com/nexperts-ai/secure-agent-box-kit` (Plugins bündeln skills/ und werden beim Start geladen).
-- **Memory** (nicht nativ syncbar): `~/.claude/CLAUDE.md` + projekt-`CLAUDE.md`/`MEMORY.md` kopieren.
-- **Login** (per-Maschine): einmal `claude` auf der Box (Browser-Login).
-- **Secrets**: statt lokalem p2ai/Touch-ID -> approval-gated orb-keystore; der Box-Agent holt ein Secret mit `orb-secret <KEY> <grund>`, der Operator gibt in der Agent-Orbit-Bubble frei.
+**Einstieg (empfohlen):** im Dashboard auf der Karte der Ziel-Box **Migrieren** klicken. Das Modal zeigt eine Live-Dry-Run-Vorschau (was ginge auf die Box) und liefert einen fertigen, auf die Box zugeschnittenen **Agent-Prompt** zum Kopieren. Diesen Prompt in eine lokale Claude-Session einfügen; der Agent fährt dann selbst: Dry-Run -> Opt-out -> scharf -> Verifikation.
 
-Prüfliste (Claude entscheidet je Setup, was wirklich gebraucht wird): Skills, CLAUDE.md/MEMORY.md, Vokabular, Secret-Zugriff (orb-keystore), Login, ggf. zusätzliche `skills/` + `.mcp.json` bei Custom-Setups.
+Darunter liegt `migrate.sh` (agent-operabel, idempotent). Aufruf:
+```
+SSH_KEY=~/.ssh/hetzner_<box> bash ~/secure-agent-box-kit/migrate.sh <user>@<host> [--dry-run] [--with-sessions]
+```
+Es kopiert die datei-portierbaren Teile und druckt am Ende einen maschinen-lesbaren Report `PIECE<TAB>STATUS<TAB>DETAIL` (Status: OK / PARTIAL / MISSING / SKIP / DRY / TODO). Pflicht-Teile (skills, agents, memory, settings, mcp) gaten den Exit; TODO-Teile (login, secrets, vocab) sind der manuelle Handoff.
+
+- **Skills/Agents/Settings/MCP**: kopiert `migrate.sh` (rsync); Settings-Merge lässt Box-Hooks unangetastet. Zusätzlich nativ als Plugin verfügbar: `claude plugin marketplace add nexperts-ai/secure-agent-box-kit` + `claude plugin install secure-agent-box-kit@secure-agent-box-kit`.
+- **Memory**: `migrate.sh` kopiert den Knowledge-Graph home-slug-gemappt und legt eine Box-Kontext-Notiz (`reference_secure_agent_box_context.md`) + MEMORY.md-Pointer an, damit der Box-Claude weiß, dass er auf einer Secure Agent Box läuft (Report-Piece `memctx`).
+- **Login** (per-Maschine): einmal `claude` auf der Box (Browser-Login) ODER `claude setup-token`.
+- **Secrets**: statt lokalem p2ai/Touch-ID -> approval-gated orb-keystore; der Box-Agent holt ein Secret mit `orb-secret <KEY> <grund>`, der Operator gibt in der Agent-Orbit-Bubble frei. KeePass über die Passwörter-Seite der Box hochladen (Leaked per HIBP gefiltert).
+
+Prüfliste (Claude entscheidet je Setup, was wirklich gebraucht wird): Skills, Agents, MEMORY.md + Box-Kontext-Notiz, Settings, MCP, Vokabular, Secret-Zugriff (orb-keystore), Login.
