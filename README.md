@@ -3,11 +3,12 @@
 Bringt dein lokales Claude-Code-Setup auf eine **NEXperts Secure Agent Box**, damit Claude dort so gut läuft wie lokal.
 
 ## Installieren (nativ, als Claude-Plugin)
-Auf der Box:
+Claude-Code-Plugins kommen aus einem Marketplace. Dieses Repo ist sein eigener Marketplace, also zwei Schritte auf der Box:
 ```
-claude plugin install https://github.com/nexperts-ai/secure-agent-box-kit
+claude plugin marketplace add nexperts-ai/secure-agent-box-kit
+claude plugin install secure-agent-box-kit@secure-agent-box-kit
 ```
-Lädt die Skills automatisch beim Start.
+Lädt die Skills automatisch beim Start. In einer laufenden Claude-Session gehen auch die Slash-Varianten `/plugin marketplace add nexperts-ai/secure-agent-box-kit` und `/plugin install secure-agent-box-kit@secure-agent-box-kit`.
 
 ## Was drin ist
 - **Skill `secure-agent-box-setup`** — erstellt strukturiert:
