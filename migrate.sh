@@ -176,20 +176,18 @@ if [ "$BOX_CLAUDE" != MISSING ]; then
   else add login TODO "auf der Box: 'claude' (Browser) ODER 'claude setup-token'"; info "NICHT eingeloggt -> manueller Schritt"; fi
 else add login TODO "claude fehlt -> erst installieren"; fi
 
-# ---- 8) Secrets (NIE per scp -> Dashboard/orb-keystore, leaked gefiltert) -
-step "8) Secrets (orb-keystore, leaked-gefiltert)"
+# ---- 8) Secrets (NIE per scp -> Dashboard/orb-keystore; nichts droppen, leaked warnen) -
+step "8) Secrets (orb-keystore, nichts droppen + leaked warnen)"
 ORB=$(SSHB 'systemctl is-active orb-keystore 2>/dev/null || echo inactive')
 HERE_DIR=$(cd "$(dirname "$0")" && pwd)
 if [ "$ORB" = active ]; then
-  add secrets TODO "orb-keystore aktiv -> KeePass im Dashboard hochladen (leaked wird beim Import gefiltert). Vorher optional saeubern: clean_keepass.py in.kdbx clean.kdbx"
-  info "orb-keystore aktiv. Saubere Passwort-DB erzeugen (leaked raus, separate Datei):"
-  info "  IN_MASTER=... OUT_MASTER=... python3 '$HERE_DIR/clean_keepass.py' <deine.kdbx> box-clean.kdbx"
-  info "  dann box-clean.kdbx im Dashboard (Passwoerter -> KeePass) fuer diese Box hochladen."
-else add secrets TODO "orb-keystore inaktiv -> install.sh/cloud-init pruefen, dann Dashboard-Upload"; info "orb-keystore inaktiv"; fi
+  add secrets TODO "Agent sammelt .env+p2ai -> upload.kdbx (Master nur User) -> import-kdbx/secrets-apply. NICHTS droppen: HIBP-geleakt migrieren + (!!! rotieren), transcript-exponiert + (! Rotation), Warnungen nach ~/.orb-keystore/WARNINGS.txt"
+  info "orb-keystore aktiv. Secrets sammeln + hochladen macht der Agent-Prompt (Master nur User, nichts wird verworfen)."
+else add secrets TODO "orb-keystore inaktiv -> install.sh/cloud-init pruefen, dann Agent-Secrets-Flow"; info "orb-keystore inaktiv"; fi
 
 # ---- 9) Vokabular (Voice-Glossar, Dashboard-seitig) - HINWEIS -------------
 step "9) Vokabular (Voice-Glossar)"
-add vocab TODO "im Dashboard (Vokabular-Page) pro Box pflegen (box-vocab.txt einfuegen)"
+add vocab TODO "Agent synct es am Ende automatisch: POST localhost:8765/api/vocab/sync (additiv/dedupe), dann Glossar von ~/.config/agent-box/vocab.txt ausgeben"
 
 # ---- Report ---------------------------------------------------------------
 step "REPORT"
